@@ -1,0 +1,232 @@
+let n_x = 700;
+let n_t = 1000;
+let dx = 1/n_x;
+let dt = 1/n_t;
+
+let psi_im = new Array(n_x);
+let psi_re = new Array(n_x);
+let v = new Array(n_x);
+let hbar = 10000;
+let hbar_2m = 0.0001;
+
+let drawRadius = 30;
+
+let drawImaginary = true;
+let drawReal = true;
+let drawAbsolute = true;
+let drawPotential = true;
+
+let paused = false;
+
+let mouseAbove;
+
+function f1(x) {
+  return 0.5;
+}
+
+function f2(x) {
+  return x;
+}
+
+function f3(x) {
+  return 1 - x;
+}
+
+function f4(x) {
+  return x > 1/3 && x < 2/3 ? 1 : 0;
+}
+
+function f5(x) {
+  return x < 0.5? x :1 -x;
+}
+
+function h(x) {
+  return x < 2/3 ? 0 : 500 * sin(3 * Math.PI * x);
+}
+
+function makeSin(n) {
+  return x => sin(n * Math.PI * x);
+}
+
+function reset() {
+  for (let i = 0; i < n_x; i++) {
+    psi_re[i] = sin(2 * Math.PI * i/n_x)//* Math.exp(-Math.pow(i - 3*n_x/4,2)/100)
+    //; * Math.pow(i, 0.01) * Math.pow(n_x - 1 - i,0.01);
+    psi_im[i] = 0;
+  }
+  psi_re[0] = 0;
+  psi_im[0] = 0;
+  psi_re[n_x-1] = 0;
+  psi_im[n_x-1] = 0;
+
+  setPsi(makeSin(2));
+  setPotential(f1);
+}
+
+function setPotential(f) {
+  for (let i = 0; i < n_x; i++) {
+    v[i] = f(i/n_x);
+  }
+}
+
+function setPsi(f) {
+  for (let i = 0; i < n_x; i++) {
+    psi_re[i] = f(i/n_x);
+    psi_im[i] = 0;
+  }
+}
+
+function setup() {
+  createCanvas(800, 500)
+  radio = createRadio();
+  radio.option('\\(\\text{Square Cursor}\\)', 1);
+  radio.option('\\(\\text{Circular Cursor}\\)', 2);
+  createCheckbox('\\(\\text{Imaginary Part: }\\operatorname{Re}[\\Psi(x, t)]\\)', true)
+    .changed(() => drawImaginary = !drawImaginary);
+  createCheckbox('\\(\\text{Real Part: }\\operatorname{Im}[\\Psi(x, t)]\\)', true)
+    .changed(() => drawReal = !drawReal);
+  createCheckbox("\\(\\text{Amplitude Squared: } \\lvert \\Psi(x, t) \\rvert^2\\)", true)
+    .changed(() => drawAbsolute = !drawAbsolute);
+  createCheckbox("\\(\\text{Potential: } V(x, t)\\)", true)
+    .changed(() => drawPotential = !drawPotential);
+  createButton('\\(\\text{Play/Pause Simulation}\\)')
+    .mousePressed(() => paused = !paused);
+  createButton('\\(\\text{Reset Simulation}\\)')
+    .mousePressed(() => reset());
+  createElement('br');
+  createButton("\\(\\text{Set } V(x, t_0) = f_1(x) \\)")
+    .mousePressed(() => setPotential(f1));
+  createButton("\\(\\text{Set } V(x, t_0) = f_2(x) \\)")
+    .mousePressed(() => setPotential(f2));
+  createButton("\\(\\text{Set } V(x, t_0) = f_3(x) \\)")
+    .mousePressed(() => setPotential(f3));
+  createButton("\\(\\text{Set } V(x, t_0) = f_4(x) \\)")
+    .mousePressed(() => setPotential(f4));
+  createButton("\\(\\text{Set } V(x, t_0) = f_5(x) \\)")
+    .mousePressed(() => setPotential(f5));
+  createElement('br');
+  createButton("\\(\\text{Set } \\Psi(x, t_0) = g_1(x) \\)")
+    .mousePressed(() => setPsi(makeSin(1)));
+  createButton("\\(\\text{Set } \\Psi(x, t_0) = g_2(x) \\)")
+    .mousePressed(() => setPsi(makeSin(2)));
+  createButton("\\(\\text{Set } \\Psi(x, t_0) = g_3(x) \\)")
+    .mousePressed(() => setPsi(makeSin(3)));
+  createButton("\\(\\text{Set } \\Psi(x, t_0) = g_4(x) \\)")
+    .mousePressed(() => setPsi(makeSin(4)));
+  createButton("\\(\\text{Set } \\Psi(x, t_0) = h(x) \\)")
+    .mousePressed(() => setPsi(h));
+
+  createP('\\(\\text{where}\\) \\[f_1(x) = \\ \\frac 1 2 \\qquad ' +
+    'f_2(x) = x \\qquad ' + 
+    'f_3(x) = 1 - x \\quad '+
+    'f_4(x) = \\begin{cases} 1 & \\text{if } \\frac 1 3 < x < \\frac 2 3 \\\\ 0 & \\text{otherwise} \\end{cases} \\qquad ' +
+    'f_5(x) = \\begin{cases} x & \\text{if } x \\leq \\frac 1 2 \\\\ 1 - x & \\text{if } x > \\frac 1 2 \\end{cases} \\] ' + 
+    '\\( \\text{and} \\)' + 
+    '\\[ g_n(x) = \\sin(n \\pi x) \\quad h(x) = \\begin{cases} 0 & \\text{if } x \\leq \\frac 2 3 \\\\ \\sin(3 \\pi x) & \\text{otherwise.} \\end{cases}\\]');
+
+  renderMathInElement(document.body);
+  reset();
+}
+
+function draw() {
+  background(220);
+  if (frameCount % 120 == 0) {
+    print(radio.value());
+  }
+
+
+  if (isMouseInFrame() && mouseIsPressed && drawPotential) {
+    for (let i = 0; i < n_x; i++) {
+      if (width * i/n_x > mouseX - drawRadius && width * i/n_x < mouseX + drawRadius) {
+        if (mouseAbove) { //v[Math.floor(n_x * mouseX/width)] < 1 - mouseY / height){
+          if (radio.value() == 1) {
+            v[i] = Math.max(0, Math.min(v[i], 1 - (mouseY + drawRadius) / height));
+          } else {
+            v[i] = Math.max(0, Math.min(v[i], 1 - (mouseY + Math.sqrt(Math.pow(drawRadius, 2) - Math.pow(width * i / n_x - mouseX, 2))) / height));
+
+          }
+        } else {
+          if (radio.value() == 1) {
+            v[i] = Math.min(1, Math.max(v[i], 1 - (mouseY - drawRadius) / height));
+          } else {
+            v[i] = Math.min(1, Math.max(v[i], 1 - (mouseY - Math.sqrt(Math.pow(drawRadius, 2) - Math.pow(width * i/n_x - mouseX, 2))) / height));
+
+          }
+        }
+      }
+    }
+  }
+
+
+  if (!paused) {
+    let psi_im_xx = new Array(n_x);
+    let psi_re_xx = new Array(n_x);
+
+    for (let j = 0; j < n_t; j++) {
+      for(let i = 1; i < n_x-1; i++) {
+        psi_im_xx[i] = psi_im[i+1] - 2 * psi_im[i] + psi_im[i-1]
+        psi_re_xx[i] = psi_re[i+1] - 2 * psi_re[i] + psi_re[i-1];
+      }
+
+      psi_re_xx[0] = psi_re[1] - psi_re[0];
+      psi_re_xx[n_x-1] = psi_re[n_x - 2] - psi_re[n_x - 1];
+      psi_im_xx[0] = psi_im[1] - psi_im[0];
+      psi_im_xx[n_x-1] = psi_im[n_x - 2] - psi_im[n_x - 1];
+
+
+      for (let i = 1; i < n_x-1; i++) {
+        psi_re[i] += -hbar_2m * psi_im_xx[i] + v[i] / hbar * psi_im[i];
+        psi_im[i] += hbar_2m * psi_re_xx[i] - v[i] / hbar * psi_re[i];
+      }
+    }
+  }
+
+  for (let i_ = 0; i_ < width; i_+=1) {
+    let i = Math.floor((i_ / width) * n_x);
+    let i_1 = Math.floor(((i_ + 1) / width) * n_x);
+    if (drawAbsolute) {
+      stroke(0);
+      line(width * dx * i, height - 300 * (Math.pow(psi_re[i], 2) + Math.pow(psi_im[i], 2)),
+        width * dx * (i_1), height - 300 * (Math.pow(psi_re[i_1], 2) + Math.pow(psi_im[i_1], 2)));
+    }
+    if (drawReal) {
+      stroke(200, 0, 0);
+      line(width * dx * i, height/2 - 300 * psi_re[i],
+        width * dx * (i_1), height/2 - 300 * psi_re[i_1]);
+    }
+    if (drawImaginary) {
+      stroke(0, 0, 200);
+      line(width * dx * i, height/2 - 300 * psi_im[i],
+        width * dx * (i_1), height/2 - 300 *psi_im[i_1]);
+    }
+    if (drawPotential) {
+      stroke(0, 200, 0);
+      line(width * dx * i, height - height * v[i],
+        width * dx * (i_1), height - height *v[i_1]);
+    }
+  }
+
+  if (isMouseInFrame() && drawPotential && mouseIsPressed) {
+    stroke(0);
+    noFill();
+    if (radio.value() == 1) {
+      rect(mouseX - drawRadius, mouseY - drawRadius, 2 * drawRadius, 2 * drawRadius);
+    } else {
+      ellipse(mouseX, mouseY, 2 * drawRadius);
+    }
+  }
+}
+
+function isMouseInFrame() {
+  return 0 < mouseX && mouseX < width && 0 < mouseY && mouseY < height;
+}
+
+function isMouseAbove() {
+  return v[Math.floor(n_x * mouseX/width)] < 1 - mouseY / height;
+}
+
+function mousePressed() {
+  if (isMouseInFrame()) {
+    mouseAbove = isMouseAbove();
+  }
+}
